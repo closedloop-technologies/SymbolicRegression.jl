@@ -51,7 +51,7 @@ import ...deprecate_varmap
     `DynamicQuantities.Quantity{<:Any,<:SymbolicDimensions}`.
 """
 mutable struct Dataset{
-    T<:DATA_TYPE,
+    T<:Union{DATA_TYPE,AbstractMatrix},
     L<:LOSS_TYPE,
     AX<:AbstractMatrix{T},
     AY<:Union{AbstractVector{T},Nothing},
@@ -97,9 +97,9 @@ Construct a dataset to pass between internal functions.
 """
 function Dataset(
     X::AbstractMatrix{T},
-    y::Union{AbstractVector{T},Nothing}=nothing,
+    y::Union{<:AbstractArray{T},Nothing}=nothing,
     loss_type::Type{L}=Nothing;
-    weights::Union{AbstractVector{T},Nothing}=nothing,
+    weights::Union{AbstractVector{T2},Nothing}=nothing,
     variable_names::Union{Array{String,1},Nothing}=nothing,
     display_variable_names=variable_names,
     y_variable_name::Union{String,Nothing}=nothing,
@@ -109,7 +109,7 @@ function Dataset(
     # Deprecated:
     varMap=nothing,
     kws...,
-) where {T<:DATA_TYPE,L}
+) where {T<:Union{DATA_TYPE,AbstractArray},T2<:DATA_TYPE, L}
     Base.require_one_based_indexing(X)
     y !== nothing && Base.require_one_based_indexing(y)
     # Deprecation warning:
@@ -162,13 +162,13 @@ function Dataset(
         end
     end
     out_loss_type = if L === Nothing
-        T <: Complex ? get_base_type(T) : T
+        Float32
     else
         L
     end
 
     use_baseline = true
-    baseline = one(out_loss_type)
+    baseline = one(Float64) # previously: one(out_loss_type)
     y_si_units = get_si_units(T, y_units)
     y_sym_units = get_sym_units(T, y_units)
 
@@ -225,7 +225,7 @@ function Dataset(
 end
 function Dataset(
     X::AbstractMatrix,
-    y::Union{<:AbstractVector,Nothing}=nothing;
+    y::Union{<:AbstractArray,Nothing}=nothing;
     weights::Union{<:AbstractVector,Nothing}=nothing,
     kws...,
 )

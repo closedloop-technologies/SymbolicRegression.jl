@@ -442,6 +442,76 @@ function equation_search(
     return equation_search(X, reshape(y, (1, size(y, 1))); kw..., v_dim_out=Val(1))
 end
 
+function equation_search(
+    X::AbstractMatrix{T1},
+    y::AbstractMatrix{T2};
+    niterations::Int=10,
+    weights::Union{AbstractMatrix{T1},AbstractVector{T1},Nothing}=nothing,
+    options::Options=Options(),
+    variable_names::Union{AbstractVector{String},Nothing}=nothing,
+    display_variable_names::Union{AbstractVector{String},Nothing}=variable_names,
+    y_variable_names::Union{String,AbstractVector{String},Nothing}=nothing,
+    parallelism=:multithreading,
+    numprocs::Union{Int,Nothing}=nothing,
+    procs::Union{Vector{Int},Nothing}=nothing,
+    addprocs_function::Union{Function,Nothing}=nothing,
+    heap_size_hint_in_bytes::Union{Integer,Nothing}=nothing,
+    runtests::Bool=true,
+    saved_state=nothing,
+    return_state::Union{Bool,Nothing,Val}=nothing,
+    loss_type::Type{L}=Nothing,
+    verbosity::Union{Integer,Nothing}=nothing,
+    progress::Union{Bool,Nothing}=nothing,
+    X_units::Union{AbstractVector,Nothing}=nothing,
+    y_units=nothing,
+    v_dim_out::Val{DIM_OUT}=Val(nothing),
+    # Deprecated:
+    multithreaded=nothing,
+    varMap=nothing,
+    ) where {T1<:AbstractMatrix,T2<:AbstractMatrix,L,DIM_OUT}
+    if multithreaded !== nothing
+        error(
+            "`multithreaded` is deprecated. Use the `parallelism` argument instead. " *
+            "Choose one of :multithreaded, :multiprocessing, or :serial.",
+        )
+    end
+    variable_names = deprecate_varmap(variable_names, varMap, :equation_search)
+
+    if weights !== nothing
+        @assert length(weights) == length(y)
+        weights = reshape(weights, size(y))
+    end
+
+    datasets = construct_datasets(
+        X,
+        y,
+        weights,
+        variable_names,
+        display_variable_names,
+        y_variable_names,
+        X_units,
+        y_units,
+        L,
+    )
+
+    return equation_search(
+        datasets;
+        niterations=niterations,
+        options=options,
+        parallelism=parallelism,
+        numprocs=numprocs,
+        procs=procs,
+        addprocs_function=addprocs_function,
+        heap_size_hint_in_bytes=heap_size_hint_in_bytes,
+        runtests=runtests,
+        saved_state=saved_state,
+        return_state=return_state,
+        verbosity=verbosity,
+        progress=progress,
+        v_dim_out=Val(DIM_OUT),
+    )
+end
+
 function equation_search(dataset::Dataset; kws...)
     return equation_search([dataset]; kws..., v_dim_out=Val(1))
 end
@@ -461,7 +531,7 @@ function equation_search(
     verbosity::Union{Int,Nothing}=nothing,
     progress::Union{Bool,Nothing}=nothing,
     v_dim_out::Val{DIM_OUT}=Val(nothing),
-) where {DIM_OUT,T<:DATA_TYPE,L<:LOSS_TYPE,D<:Dataset{T,L}}
+) where {DIM_OUT,T<:Union{DATA_TYPE,AbstractArray},L<:LOSS_TYPE,D<:Dataset{T,L}}
     concurrency = if parallelism in (:multithreading, "multithreading")
         :multithreading
     elseif parallelism in (:multiprocessing, "multiprocessing")
