@@ -1,53 +1,53 @@
 using LinearAlgebra
 using SymbolicRegression
-# using Array{Array{Array{Int64, 2}, 1}, 1}
 
 # X data is a list of features, where each feature is a scalar, vector, or matrix
 # Y data is a list of targets, where each target is a scalar, vector, or matrix
-X_is = Array{Array{Matrix{Int64},1},1}([[
-    Matrix{Int64}([8 6; 6 4]), Matrix{Int64}([7 9; 4 3])
-]])
-Y_is = Array{Array{Matrix{Int64},1},1}([
-    [
-        Matrix{Int64}(
-            [
-                8 6 8 6 8 6
-                6 4 6 4 6 4
-                6 8 6 8 6 8
-                4 6 4 6 4 6
-                8 6 8 6 8 6
-                6 4 6 4 6 4
-            ]
-        ),
-    ],
-    [
-        Matrix{Int64}(
-            [
-                7 9 7 9 7 9
-                4 3 4 3 4 3
-                9 7 9 7 9 7
-                3 4 3 4 3 4
-                7 9 7 9 7 9
-                4 3 4 3 4 3
-            ]
-        ),
-    ],
-],)
-X_os = Array{Array{Matrix{Int64},1},1}([[Matrix{Int64}([3 2; 7 8])]])
-Y_os = Array{Array{Matrix{Int64},1},1}([[
-    Matrix{Int64}(
-        [
-            3 2 3 2 3 2
-            7 8 7 8 7 8
-            2 3 2 3 2 3
-            8 7 8 7 8 7
-            3 2 3 2 3 2
-            7 8 7 8 7 8
-        ]
-    ),
-]])
+T_feature=Int64
+num_samples=2
+num_features=1
+num_targets=1
 
-println(size(X_is), size(Y_is), size(X_os), size(Y_os))
+X_is = Matrix{Matrix{T_feature}}(undef, num_samples, num_features)
+
+# Populate the matrix
+X_is[1, 1] = Matrix{T_feature}([8 6; 6 4])
+X_is[2, 1] = Matrix{T_feature}([7 9; 4 3])
+
+
+Y_is = Matrix{Matrix{T_feature}}(undef, num_targets, num_samples)
+
+Y_is[1, 1] = Matrix{T_feature}([
+        8 6 8 6 8 6
+        6 4 6 4 6 4
+        6 8 6 8 6 8
+        4 6 4 6 4 6
+        8 6 8 6 8 6
+        6 4 6 4 6 4
+    ])
+
+Y_is[1, 2] = Matrix{T_feature}([
+        7 9 7 9 7 9
+        4 3 4 3 4 3
+        9 7 9 7 9 7
+        3 4 3 4 3 4
+        7 9 7 9 7 9
+        4 3 4 3 4 3
+    ])
+
+X_os = Matrix{Matrix{T_feature}}(undef, 1, num_features)
+X_os[1, 1] = Matrix{T_feature}([3 2; 7 8])
+
+Y_os = Matrix{Matrix{T_feature}}(undef, num_targets, 1)
+Y_os[1,1] = Matrix{Int64}([
+        3 2 3 2 3 2
+        7 8 7 8 7 8
+        2 3 2 3 2 3
+        8 7 8 7 8 7
+        3 2 3 2 3 2
+        7 8 7 8 7 8
+    ])
+
 
 # The python solution is to find the equation that generates the Y data from the X data
 # X2 = np.tile(X,3)
@@ -60,7 +60,7 @@ println(size(X_is), size(Y_is), size(X_os), size(Y_os))
 # end
 
 # Function to generate Y data from X data
-function generate_Y_pred(X::Matrix{T})::Matrix{T} where T
+function generate_Y_pred(X::Matrix{T})::Matrix{T} where {T}
     # Tile the matrix 3 times along the columns
     X2 = repeat(X, 1, 3)
 
@@ -75,32 +75,31 @@ function generate_Y_pred(X::Matrix{T})::Matrix{T} where T
     # Vertically concatenate rows to form Y_pred
     Y_pred = vcat(X2_flat, X3, X2_flat)
 
-    return Matrix{T}(stack(Y_pred, dims=1))
+    return Matrix{T}(stack(Y_pred; dims=1))
 end
 
-z = generate_Y_pred(X_is[1][1])
-println(1, ":", z == Y_is[1][1], typeof(z), typeof(Y_is[1][1]))
+z = generate_Y_pred(X_is[1, 1])
+println("in sample 1 is correct : ", Y_is[1,1] == z)
 
-Y_pred_example = generate_Y_pred(X_os[1][1])
-println("Predicted Y from the example X:", Y_pred_example == Y_os[1][1])
-println(Y_pred_example)
+z = generate_Y_pred(X_is[2, 1])
+println("in sample 2 is correct : ", Y_is[1,2] == z)
 
-# Operators:
-# unary_operators=[repeat, reverse, vcat, eachrow]
-# binary_operators=[vcat, map, reduce]
+Y_pred_example = generate_Y_pred(X_os[1, 1])
+println("os target 1 is correct : ", Y_pred_example == Y_os[1, 1])
 
 options = SymbolicRegression.Options(;
     binary_operators=[vcat, map, reduce],
     unary_operators=[repeat, reverse, vcat, eachrow, stack],
     populations=20,
-)
+) 
 
 # Seach
 hall_of_fame = equation_search(
     X_is,
     Y_is;
     niterations=40,
-    options=options,
+    # options=options,
+    # numprocs=0,
     # parallelism=:multithreading
 )
 
